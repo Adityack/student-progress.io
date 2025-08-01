@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Progress Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* --- Animation Keyframes --- */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes scaleOut {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(0.95); opacity: 0; }
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Animation Classes --- */
+        .modal.show .modal-backdrop {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        .modal.hide .modal-backdrop {
+            animation: fadeOut 0.3s ease-in forwards;
+        }
+        .modal.show .modal-content {
+            animation: scaleIn 0.3s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+        }
+        .modal.hide .modal-content {
+            animation: scaleOut 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+        }
+        .list-item-animate {
+            animation: slideInUp 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+            opacity: 0; /* Start hidden */
+        }
+
+        /* --- Component Styling --- */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn-primary {
+            background-image: linear-gradient(to right, #4f46e5, #6366f1);
+        }
+        .btn-primary:hover {
+             background-image: linear-gradient(to right, #4338ca, #4f46e5);
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .header-gradient {
+            background: -webkit-linear-gradient(45deg, #4f46e5, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .spinner {
+            border: 2px solid rgba(0,0,0,.1);
+            border-left-color: #fff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+
+    <!-- Main Container -->
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-6xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold header-gradient">Student Progress Tracker</h1>
+            <p class="text-gray-600 mt-3 max-w-2xl mx-auto">A modern way to manage your classes, students, and their learning progress.</p>
+        </header>
+
+        <!-- Breadcrumbs -->
+        <nav id="breadcrumbs" class="text-lg mb-6 font-medium text-gray-500 breadcrumb flex items-center space-x-2">
+            <!-- Breadcrumbs will be dynamically generated here -->
+        </nav>
+
+        <!-- Classes View -->
+        <div id="classes-view">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">My Classes</h2>
+                <button id="show-add-class-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Class</button>
+            </div>
+            <div id="classes-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Class cards will be dynamically inserted here -->
+            </div>
+            <p id="no-classes-msg" class="hidden text-center text-gray-500 mt-10">No classes created yet. Click 'Add Class' to get started.</p>
+        </div>
+
+        <!-- Students View -->
+        <div id="students-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="students-title" class="text-2xl font-semibold">Students in </h2>
+                <button id="show-add-student-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Student</button>
+            </div>
+            <div id="students-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Student cards will be dynamically inserted here -->
+            </div>
+             <p id="no-students-msg" class="hidden text-center text-gray-500 mt-10">No students added to this class yet. Click 'Add Student' to get started.</p>
+        </div>
+
+        <!-- Subjects View -->
+        <div id="subjects-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="subjects-title" class="text-2xl font-semibold">Subjects for </h2>
+                <button id="show-add-subject-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Subject</button>
+            </div>
+            <div id="subjects-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Subject cards will be dynamically inserted here -->
+            </div>
+            <p id="no-subjects-msg" class="hidden text-center text-gray-500 mt-10">No subjects added for this student. Click 'Add Subject' to create one.</p>
+        </div>
+
+        <!-- Chapters View -->
+        <div id="chapters-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="chapters-title" class="text-2xl font-semibold">Chapters for </h2>
+                <button id="show-add-chapter-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Chapter</button>
+            </div>
+            <div id="chapters-list" class="space-y-4">
+                <!-- Chapter items will be dynamically inserted here -->
+            </div>
+            <p id="no-chapters-msg" class="hidden text-center text-gray-500 mt-10">No chapters added for this subject. Click 'Add Chapter' to create one.</p>
+        </div>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modals-container">
+        <!-- Add Class Modal -->
+        <div id="add-class-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Add a New Class</h3>
+                <form id="add-class-form">
+                    <input id="class-name-input" type="text" placeholder="e.g., Grade 10 Math" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="add-class-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Add Class</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Student Modal -->
+        <div id="add-student-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Add a New Student</h3>
+                <form id="add-student-form">
+                    <input id="student-name-input" type="text" placeholder="Enter student's name" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="add-student-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Add Student</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Subject Modal -->
+        <div id="add-subject-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Add a New Subject</h3>
+                <form id="add-subject-form">
+                    <input id="subject-name-input" type="text" placeholder="Enter subject name (e.g., Algebra)" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="add-subject-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Add Subject</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Chapter Modal -->
+        <div id="add-chapter-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Add a New Chapter</h3>
+                <form id="add-chapter-form">
+                    <input id="chapter-name-input" type="text" placeholder="Enter chapter name" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <input id="chapter-link-input" type="url" placeholder="Enter chapter website link (optional)" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="add-chapter-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Add Chapter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Add/Edit Chapter Link Modal -->
+        <div id="edit-chapter-link-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Add/Edit Website Link</h3>
+                <form id="edit-chapter-link-form">
+                    <input id="edit-chapter-link-input" type="url" placeholder="Enter chapter website link" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="edit-chapter-link-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Save Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Doc Link Modal -->
+        <div id="add-doc-link-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Add Document Link</h3>
+                <form id="add-doc-link-form">
+                    <input id="doc-link-input" type="url" placeholder="Enter document link" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="add-doc-link-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Add Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'student-tracker-default';
+
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- App State ---
+        let currentUserId = null;
+        let selectedClass = null;
+        let selectedStudent = null;
+        let selectedSubjectName = null;
+        let classesUnsubscribe = null;
+        let chapterForDocLink = null;
+        let chapterForEditLink = null;
+
+
+        // --- UI Element References ---
+        const views = {
+            classes: document.getElementById('classes-view'),
+            students: document.getElementById('students-view'),
+            subjects: document.getElementById('subjects-view'),
+            chapters: document.getElementById('chapters-view'),
+        };
+        const lists = {
+            classes: document.getElementById('classes-list'),
+            students: document.getElementById('students-list'),
+            subjects: document.getElementById('subjects-list'),
+            chapters: document.getElementById('chapters-list'),
+        };
+        const forms = {
+            addClass: document.getElementById('add-class-form'),
+            addStudent: document.getElementById('add-student-form'),
+            addSubject: document.getElementById('add-subject-form'),
+            addChapter: document.getElementById('add-chapter-form'),
+            addDocLink: document.getElementById('add-doc-link-form'),
+            editChapterLink: document.getElementById('edit-chapter-link-form'),
+        };
+        const inputs = {
+            className: document.getElementById('class-name-input'),
+            studentName: document.getElementById('student-name-input'),
+            subjectName: document.getElementById('subject-name-input'),
+            chapterName: document.getElementById('chapter-name-input'),
+            chapterLink: document.getElementById('chapter-link-input'),
+            docLink: document.getElementById('doc-link-input'),
+            editChapterLink: document.getElementById('edit-chapter-link-input'),
+        };
+        const breadcrumbs = document.getElementById('breadcrumbs');
+
+        // --- Utility Functions ---
+        function showView(viewName) {
+            Object.values(views).forEach(view => view.classList.add('hidden'));
+            if(views[viewName]) views[viewName].classList.remove('hidden');
+            updateBreadcrumbs();
+        }
+
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex', 'show');
+            modal.classList.remove('hide');
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.add('hide');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        function updateBreadcrumbs() {
+            breadcrumbs.innerHTML = '';
+            const homeLink = document.createElement('a');
+            homeLink.href = '#';
+            homeLink.textContent = 'Classes';
+            homeLink.className = 'text-indigo-600 hover:text-indigo-800';
+            homeLink.onclick = (e) => {
+                e.preventDefault();
+                selectedClass = null;
+                selectedStudent = null;
+                selectedSubjectName = null;
+                showView('classes');
+            };
+            breadcrumbs.appendChild(homeLink);
+
+            if (selectedClass) {
+                breadcrumbs.innerHTML += ' <span class="text-gray-400">/</span> ';
+                const classLink = document.createElement('a');
+                classLink.href = '#';
+                classLink.textContent = selectedClass.name;
+                classLink.className = 'text-indigo-600 hover:text-indigo-800';
+                classLink.onclick = (e) => {
+                    e.preventDefault();
+                    selectedStudent = null;
+                    selectedSubjectName = null;
+                    showView('students');
+                    renderStudents();
+                };
+                breadcrumbs.appendChild(classLink);
+            }
+
+            if (selectedStudent) {
+                breadcrumbs.innerHTML += ' <span class="text-gray-400">/</span> ';
+                const studentLink = document.createElement('a');
+                studentLink.href = '#';
+                studentLink.textContent = selectedStudent.name;
+                studentLink.className = 'text-indigo-600 hover:text-indigo-800';
+                studentLink.onclick = (e) => {
+                    e.preventDefault();
+                    selectedSubjectName = null;
+                    showView('subjects');
+                    renderSubjects();
+                };
+                breadcrumbs.appendChild(studentLink);
+            }
+
+            if (selectedSubjectName) {
+                breadcrumbs.innerHTML += ' <span class="text-gray-400">/</span> ';
+                const subjectSpan = document.createElement('span');
+                subjectSpan.textContent = selectedSubjectName;
+                subjectSpan.className = 'text-gray-700';
+                breadcrumbs.appendChild(subjectSpan);
+            }
+        }
+
+        function animateList(listElement) {
+            const items = listElement.children;
+            for (let i = 0; i < items.length; i++) {
+                items[i].classList.add('list-item-animate');
+                items[i].style.animationDelay = `${i * 0.07}s`;
+            }
+        }
+
+        // --- Rendering Functions ---
+        function renderClasses(classesData) {
+            lists.classes.innerHTML = '';
+            document.getElementById('no-classes-msg').classList.toggle('hidden', classesData.length > 0);
+            classesData.forEach(cls => {
+                const card = document.createElement('div');
+                card.className = 'card p-4 flex flex-col justify-between cursor-pointer';
+                card.innerHTML = `
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">${cls.name}</h3>
+                        <p class="text-sm text-gray-500">${cls.students?.length || 0} students</p>
+                    </div>
+                `;
+                card.onclick = () => {
+                    selectedClass = cls;
+                    showView('students');
+                    renderStudents();
+                };
+                lists.classes.appendChild(card);
+            });
+            animateList(lists.classes);
+        }
+
+        function renderStudents() {
+            if (!selectedClass) return;
+            document.getElementById('students-title').textContent = `Students in ${selectedClass.name}`;
+            const students = selectedClass.students || [];
+            lists.students.innerHTML = '';
+            document.getElementById('no-students-msg').classList.toggle('hidden', students.length > 0);
+            students.forEach(student => {
+                const card = document.createElement('div');
+                card.className = 'card p-4 flex flex-col justify-between cursor-pointer';
+                card.innerHTML = `
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">${student.name}</h3>
+                        <p class="text-sm text-gray-500">${student.subjects?.length || 0} subjects</p>
+                    </div>
+                `;
+                card.onclick = () => {
+                    selectedStudent = student;
+                    showView('subjects');
+                    renderSubjects();
+                };
+                lists.students.appendChild(card);
+            });
+            animateList(lists.students);
+        }
+
+        function renderSubjects() {
+            if (!selectedStudent) return;
+            document.getElementById('subjects-title').textContent = `Subjects for ${selectedStudent.name}`;
+            const subjects = selectedStudent.subjects || [];
+            lists.subjects.innerHTML = '';
+            document.getElementById('no-subjects-msg').classList.toggle('hidden', subjects.length > 0);
+
+            subjects.forEach(subject => {
+                const card = document.createElement('div');
+                card.className = 'card p-4 flex flex-col justify-between';
+                card.innerHTML = `
+                    <div class="cursor-pointer" data-subject-name="${subject.name}">
+                        <h3 class="text-lg font-bold text-gray-800">${subject.name}</h3>
+                        <p class="text-sm text-gray-500">${subject.chapters?.length || 0} chapters</p>
+                    </div>
+                    <div class="mt-4">
+                        <button data-subject-name="${subject.name}" class="generate-chapters-btn btn btn-primary text-white font-semibold py-2 px-4 rounded-lg text-sm w-full flex items-center justify-center">
+                            <span class="btn-text">✨ Generate Chapters</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                `;
+                lists.subjects.appendChild(card);
+            });
+            animateList(lists.subjects);
+        }
+
+        function renderChapters() {
+            if (!selectedStudent || !selectedSubjectName) return;
+            document.getElementById('chapters-title').textContent = `Chapters for ${selectedSubjectName}`;
+            const subject = (selectedStudent.subjects || []).find(s => s.name === selectedSubjectName);
+            const chapters = subject ? subject.chapters || [] : [];
+            lists.chapters.innerHTML = '';
+            document.getElementById('no-chapters-msg').classList.toggle('hidden', chapters.length > 0);
+
+            chapters.forEach(chapter => {
+                const item = document.createElement('div');
+                item.className = 'card p-4 flex flex-col sm:flex-row sm:items-center justify-between';
+                
+                const docLinksHTML = (chapter.docLinks || []).map(link => 
+                    `<a href="${link}" target="_blank" class="text-indigo-500 hover:underline block truncate text-sm">${link}</a>`
+                ).join('');
+
+                const websiteLinkHTML = `
+                    <div class="flex items-center space-x-2">
+                        ${chapter.link ? `<a href="${chapter.link}" target="_blank" class="text-indigo-600 hover:underline text-sm block truncate">Website: ${chapter.link}</a>` : '<p class="text-sm text-gray-400">No website link</p>'}
+                        <button data-chapter-id="${chapter.id}" class="edit-link-btn text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-2 rounded">${chapter.link ? 'Edit' : 'Add'}</button>
+                    </div>
+                `;
+
+                item.innerHTML = `
+                    <div class="flex-grow">
+                        <div class="flex items-center">
+                            <input type="checkbox" data-chapter-id="${chapter.id}" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3 cursor-pointer" ${chapter.completed ? 'checked' : ''}>
+                            <span class="font-semibold text-lg ${chapter.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${chapter.name}</span>
+                        </div>
+                        <div class="mt-2 pl-8 space-y-3">
+                            ${websiteLinkHTML}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-600">Documents:</h4>
+                                <div class="pl-2 mt-1 space-y-1">${docLinksHTML || '<p class="text-sm text-gray-400">No document links</p>'}</div>
+                                <button data-chapter-id="${chapter.id}" class="add-doc-link-btn mt-2 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-2 rounded">+ Add Doc Link</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                lists.chapters.appendChild(item);
+            });
+            animateList(lists.chapters);
+        }
+        
+        // --- Firestore Actions ---
+        
+        async function getClassDocRef() {
+             if (!currentUserId || !selectedClass?.id) return null;
+             return doc(db, "artifacts", appId, "users", currentUserId, "classes", selectedClass.id);
+        }
+
+        async function addClass(name) {
+            if (!currentUserId) return;
+            const classId = crypto.randomUUID();
+            const classRef = doc(db, "artifacts", appId, "users", currentUserId, "classes", classId);
+            await setDoc(classRef, { id: classId, name: name, students: [] });
+        }
+
+        async function addStudent(name) {
+            const classDocRef = await getClassDocRef();
+            if(!classDocRef) return;
+            const newStudent = {
+                id: crypto.randomUUID(),
+                name: name,
+                subjects: []
+            };
+            await updateDoc(classDocRef, {
+                students: arrayUnion(newStudent)
+            });
+        }
+
+        async function updateClassData(updatedClass) {
+            const classDocRef = doc(db, "artifacts", appId, "users", currentUserId, "classes", updatedClass.id);
+            await setDoc(classDocRef, updatedClass);
+        }
+
+        async function addSubject(name) {
+            if (!selectedClass || !selectedStudent) return;
+            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
+            if (studentIndex === -1) return;
+
+            selectedClass.students[studentIndex].subjects.push({ name: name, chapters: [] });
+            await updateClassData(selectedClass);
+        }
+
+        async function addChapter(name, link) {
+            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
+            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
+            if (studentIndex === -1) return;
+            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
+            if (subjectIndex === -1) return;
+
+            const newChapter = {
+                id: crypto.randomUUID(),
+                name: name,
+                link: link || "",
+                completed: false,
+                docLinks: []
+            };
+            selectedClass.students[studentIndex].subjects[subjectIndex].chapters.push(newChapter);
+            await updateClassData(selectedClass);
+        }
+        
+        async function toggleChapterCompletion(chapterId) {
+            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
+            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
+            if (studentIndex === -1) return;
+            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
+            if (subjectIndex === -1) return;
+            const chapterIndex = selectedClass.students[studentIndex].subjects[subjectIndex].chapters.findIndex(c => c.id === chapterId);
+            if (chapterIndex === -1) return;
+
+            const chapter = selectedClass.students[studentIndex].subjects[subjectIndex].chapters[chapterIndex];
+            chapter.completed = !chapter.completed;
+            await updateClassData(selectedClass);
+        }
+        
+        async function addDocLink(chapterId, docLink) {
+            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
+            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
+            if (studentIndex === -1) return;
+            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
+            if (subjectIndex === -1) return;
+            const chapterIndex = selectedClass.students[studentIndex].subjects[subjectIndex].chapters.findIndex(c => c.id === chapterId);
+            if (chapterIndex === -1) return;
+
+            const chapter = selectedClass.students[studentIndex].subjects[subjectIndex].chapters[chapterIndex];
+            if (!chapter.docLinks) chapter.docLinks = [];
+            chapter.docLinks.push(docLink);
+            await updateClassData(selectedClass);
+        }
+
+        async function updateChapterLink(chapterId, newLink) {
+            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
+            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
+            if (studentIndex === -1) return;
+            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
+            if (subjectIndex === -1) return;
+            const chapterIndex = selectedClass.students[studentIndex].subjects[subjectIndex].chapters.findIndex(c => c.id === chapterId);
+            if (chapterIndex === -1) return;
+
+            selectedClass.students[studentIndex].subjects[subjectIndex].chapters[chapterIndex].link = newLink;
+            await updateClassData(selectedClass);
+        }
+
+        // --- Gemini API Function ---
+        async function generateChaptersWithAI(subjectName, buttonElement) {
+            if (!selectedClass || !selectedStudent) return;
+            const btnText = buttonElement.querySelector('.btn-text');
+            const spinner = buttonElement.querySelector('.spinner');
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            buttonElement.disabled = true;
+
+            const prompt = `Generate a list of essential chapter titles for a course on "${subjectName}". Return the response as a JSON object with a single key "chapters" which is an array of strings. For example: {"chapters": ["Chapter 1: ...", "Chapter 2: ..."]}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text) {
+                    const parsedJson = JSON.parse(text);
+                    const chapters = parsedJson.chapters;
+
+                    if (chapters && Array.isArray(chapters)) {
+                        const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
+                        if (studentIndex === -1) return;
+                        const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === subjectName);
+                        if (subjectIndex === -1) return;
+
+                        const newChapters = chapters.map(name => ({ id: crypto.randomUUID(), name, link: "", completed: false, docLinks: [] }));
+                        selectedClass.students[studentIndex].subjects[subjectIndex].chapters.push(...newChapters);
+                        await updateClassData(selectedClass);
+                    }
+                } else {
+                     throw new Error("No content received from API.");
+                }
+            } catch (error) {
+                console.error("Error generating chapters with AI:", error);
+                btnText.textContent = "Error! Try again.";
+                setTimeout(() => { btnText.textContent = "✨ Generate Chapters"; }, 3000);
+            } finally {
+                spinner.classList.add('hidden');
+                btnText.classList.remove('hidden');
+                buttonElement.disabled = false;
+            }
+        }
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            // Modal Triggers
+            document.getElementById('show-add-class-modal-btn').onclick = () => showModal('add-class-modal');
+            document.getElementById('show-add-student-modal-btn').onclick = () => showModal('add-student-modal');
+            document.getElementById('show-add-subject-modal-btn').onclick = () => showModal('add-subject-modal');
+            document.getElementById('show-add-chapter-modal-btn').onclick = () => showModal('add-chapter-modal');
+
+            // Modal Cancel Buttons
+            document.getElementById('modals-container').addEventListener('click', (e) => {
+                if (e.target.matches('.cancel-btn')) {
+                    hideModal(e.target.dataset.modalId);
+                }
+            });
+
+            // Form Submissions
+            forms.addClass.onsubmit = async (e) => { e.preventDefault(); await addClass(inputs.className.value.trim()); forms.addClass.reset(); hideModal('add-class-modal'); };
+            forms.addStudent.onsubmit = async (e) => { e.preventDefault(); await addStudent(inputs.studentName.value.trim()); forms.addStudent.reset(); hideModal('add-student-modal'); };
+            forms.addSubject.onsubmit = async (e) => { e.preventDefault(); await addSubject(inputs.subjectName.value.trim()); forms.addSubject.reset(); hideModal('add-subject-modal'); };
+            forms.addChapter.onsubmit = async (e) => { e.preventDefault(); await addChapter(inputs.chapterName.value.trim(), inputs.chapterLink.value.trim()); forms.addChapter.reset(); hideModal('add-chapter-modal'); };
+            forms.addDocLink.onsubmit = async (e) => { e.preventDefault(); if(chapterForDocLink){ await addDocLink(chapterForDocLink, inputs.docLink.value.trim()); forms.addDocLink.reset(); hideModal('add-doc-link-modal'); chapterForDocLink = null; } };
+            forms.editChapterLink.onsubmit = async (e) => { e.preventDefault(); if(chapterForEditLink) { await updateChapterLink(chapterForEditLink, inputs.editChapterLink.value.trim()); forms.editChapterLink.reset(); hideModal('edit-chapter-link-modal'); chapterForEditLink = null; } };
+
+            // Dynamic content listeners
+            lists.subjects.addEventListener('click', async (e) => {
+                const subjectCard = e.target.closest('[data-subject-name]');
+                if (subjectCard && !e.target.closest('button')) {
+                    selectedSubjectName = subjectCard.dataset.subjectName;
+                    showView('chapters');
+                    renderChapters();
+                }
+                const generateBtn = e.target.closest('.generate-chapters-btn');
+                if (generateBtn) await generateChaptersWithAI(generateBtn.dataset.subjectName, generateBtn);
+            });
+
+            lists.chapters.addEventListener('click', async (e) => {
+                if (e.target.matches('input[type="checkbox"]')) { await toggleChapterCompletion(e.target.dataset.chapterId); }
+                if (e.target.matches('.add-doc-link-btn')) { chapterForDocLink = e.target.dataset.chapterId; showModal('add-doc-link-modal'); }
+                if (e.target.matches('.edit-link-btn')) {
+                    chapterForEditLink = e.target.dataset.chapterId;
+                    const subject = (selectedStudent.subjects || []).find(s => s.name === selectedSubjectName);
+                    const chapter = subject?.chapters?.find(c => c.id === chapterForEditLink);
+                    inputs.editChapterLink.value = chapter?.link || '';
+                    showModal('edit-chapter-link-modal');
+                }
+            });
+        }
+        
+        // --- Authentication & Data Loading ---
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                currentUserId = user.uid;
+                if (classesUnsubscribe) classesUnsubscribe();
+                const classesCollRef = collection(db, "artifacts", appId, "users", currentUserId, "classes");
+                classesUnsubscribe = onSnapshot(classesCollRef, (snapshot) => {
+                    const classesData = snapshot.docs.map(doc => doc.data());
+                    if(selectedClass) {
+                        const updatedClass = classesData.find(c => c.id === selectedClass.id);
+                        if(updatedClass) {
+                            selectedClass = updatedClass;
+                            if(selectedStudent){
+                                selectedStudent = updatedClass.students.find(s => s.id === selectedStudent.id) || null;
+                            }
+                        } else {
+                            selectedClass = null;
+                            selectedStudent = null;
+                            selectedSubjectName = null;
+                            showView('classes');
+                        }
+                    }
+                    renderClasses(classesData);
+                    if (views.students.classList.contains('hidden') === false) renderStudents();
+                    if (views.subjects.classList.contains('hidden') === false) renderSubjects();
+                    if (views.chapters.classList.contains('hidden') === false) renderChapters();
+                }, error => console.error("Firestore snapshot error:", error));
+            } else {
+                currentUserId = null;
+                if (classesUnsubscribe) classesUnsubscribe();
+                lists.classes.innerHTML = '<p class="text-center text-gray-500">Please sign in to manage your classes.</p>';
+            }
+        });
+
+        async function main() {
+            setupEventListeners();
+            showView('classes');
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication failed:", error);
+                document.body.innerHTML = `<div class="p-8 text-center text-red-500">Could not authenticate. The application cannot start.</div>`;
+            }
+        }
+
+        main();
+
+    </script>
+</body>
+</html>
