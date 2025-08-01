@@ -61,6 +61,7 @@
             border-radius: 0.75rem;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
         }
         .card:hover {
             transform: translateY(-5px) scale(1.02);
@@ -86,6 +87,17 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        .edit-icon {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            cursor: pointer;
+            color: #9ca3af;
+            transition: color 0.2s ease;
+        }
+        .edit-icon:hover {
+            color: #4f46e5;
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased">
@@ -104,9 +116,13 @@
 
         <!-- Classes View -->
         <div id="classes-view">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
                 <h2 class="text-2xl font-semibold">My Classes</h2>
-                <button id="show-add-class-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Class</button>
+                <div class="flex space-x-2">
+                    <button id="import-btn" class="btn bg-green-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-600">Import</button>
+                    <button id="export-btn" class="btn bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600">Export</button>
+                    <button id="show-add-class-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Class</button>
+                </div>
             </div>
             <div id="classes-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <!-- Class cards will be dynamically inserted here -->
@@ -118,7 +134,10 @@
         <div id="students-view" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="students-title" class="text-2xl font-semibold">Students in </h2>
-                <button id="show-add-student-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Student</button>
+                <div class="flex space-x-4">
+                    <button id="back-to-classes" class="btn bg-gray-200 text-gray-800 font-semibold py-2 px-5 rounded-lg hover:bg-gray-300">Back</button>
+                    <button id="show-add-student-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Student</button>
+                </div>
             </div>
             <div id="students-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <!-- Student cards will be dynamically inserted here -->
@@ -130,7 +149,10 @@
         <div id="subjects-view" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="subjects-title" class="text-2xl font-semibold">Subjects for </h2>
-                <button id="show-add-subject-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Subject</button>
+                 <div class="flex space-x-4">
+                    <button id="back-to-students" class="btn bg-gray-200 text-gray-800 font-semibold py-2 px-5 rounded-lg hover:bg-gray-300">Back</button>
+                    <button id="show-add-subject-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Subject</button>
+                </div>
             </div>
             <div id="subjects-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <!-- Subject cards will be dynamically inserted here -->
@@ -142,7 +164,10 @@
         <div id="chapters-view" class="hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="chapters-title" class="text-2xl font-semibold">Chapters for </h2>
-                <button id="show-add-chapter-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Chapter</button>
+                 <div class="flex space-x-4">
+                    <button id="back-to-subjects" class="btn bg-gray-200 text-gray-800 font-semibold py-2 px-5 rounded-lg hover:bg-gray-300">Back</button>
+                    <button id="show-add-chapter-modal-btn" class="btn btn-primary text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:shadow-lg">+ Add Chapter</button>
+                </div>
             </div>
             <div id="chapters-list" class="space-y-4">
                 <!-- Chapter items will be dynamically inserted here -->
@@ -153,7 +178,7 @@
 
     <!-- Modals Container -->
     <div id="modals-container">
-        <!-- Add Class Modal -->
+        <!-- Add/Edit Modals -->
         <div id="add-class-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
             <div class="modal-backdrop absolute inset-0"></div>
             <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
@@ -167,8 +192,21 @@
                 </form>
             </div>
         </div>
+        
+        <div id="edit-class-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Edit Class Name</h3>
+                <form id="edit-class-form">
+                    <input id="edit-class-name-input" type="text" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="edit-class-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        <!-- Add Student Modal -->
         <div id="add-student-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
             <div class="modal-backdrop absolute inset-0"></div>
             <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
@@ -182,8 +220,21 @@
                 </form>
             </div>
         </div>
+        
+        <div id="edit-student-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Edit Student Name</h3>
+                <form id="edit-student-form">
+                    <input id="edit-student-name-input" type="text" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="edit-student-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        <!-- Add Subject Modal -->
         <div id="add-subject-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
             <div class="modal-backdrop absolute inset-0"></div>
             <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
@@ -197,8 +248,21 @@
                 </form>
             </div>
         </div>
+        
+        <div id="edit-subject-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Edit Subject Name</h3>
+                <form id="edit-subject-form">
+                    <input id="edit-subject-name-input" type="text" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="edit-subject-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        <!-- Add Chapter Modal -->
         <div id="add-chapter-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
             <div class="modal-backdrop absolute inset-0"></div>
             <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
@@ -214,7 +278,20 @@
             </div>
         </div>
         
-        <!-- Add/Edit Chapter Link Modal -->
+        <div id="edit-chapter-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-4">Edit Chapter Name</h3>
+                <form id="edit-chapter-form">
+                    <input id="edit-chapter-name-input" type="text" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" data-modal-id="edit-chapter-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="btn btn-primary text-white font-semibold py-2 px-4 rounded-lg">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="edit-chapter-link-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
             <div class="modal-backdrop absolute inset-0"></div>
             <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
@@ -229,7 +306,6 @@
             </div>
         </div>
 
-        <!-- Add Doc Link Modal -->
         <div id="add-doc-link-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
             <div class="modal-backdrop absolute inset-0"></div>
             <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
@@ -243,7 +319,21 @@
                 </form>
             </div>
         </div>
+
+        <div id="confirm-import-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+            <div class="modal-backdrop absolute inset-0"></div>
+            <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+                <h3 class="text-xl font-semibold mb-2">Confirm Import</h3>
+                <p class="text-gray-600 mb-6">Are you sure you want to import data? This will overwrite all current data in the application.</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" data-modal-id="confirm-import-modal" class="cancel-btn btn bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button id="proceed-import-btn" class="btn bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700">Yes, Overwrite</button>
+                </div>
+            </form>
+        </div>
     </div>
+    
+    <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <script>
         // --- App State ---
@@ -253,6 +343,7 @@
         let selectedClass = null;
         let selectedStudent = null;
         let selectedSubjectName = null;
+        let itemForEdit = null;
         let chapterForDocLink = null;
         let chapterForEditLink = null;
 
@@ -271,20 +362,29 @@
         };
         const forms = {
             addClass: document.getElementById('add-class-form'),
+            editClass: document.getElementById('edit-class-form'),
             addStudent: document.getElementById('add-student-form'),
+            editStudent: document.getElementById('edit-student-form'),
             addSubject: document.getElementById('add-subject-form'),
+            editSubject: document.getElementById('edit-subject-form'),
             addChapter: document.getElementById('add-chapter-form'),
+            editChapter: document.getElementById('edit-chapter-form'),
             addDocLink: document.getElementById('add-doc-link-form'),
             editChapterLink: document.getElementById('edit-chapter-link-form'),
         };
         const inputs = {
             className: document.getElementById('class-name-input'),
+            editClassName: document.getElementById('edit-class-name-input'),
             studentName: document.getElementById('student-name-input'),
+            editStudentName: document.getElementById('edit-student-name-input'),
             subjectName: document.getElementById('subject-name-input'),
+            editSubjectName: document.getElementById('edit-subject-name-input'),
             chapterName: document.getElementById('chapter-name-input'),
+            editChapterName: document.getElementById('edit-chapter-name-input'),
             chapterLink: document.getElementById('chapter-link-input'),
             docLink: document.getElementById('doc-link-input'),
             editChapterLink: document.getElementById('edit-chapter-link-input'),
+            importFile: document.getElementById('import-file-input'),
         };
         const breadcrumbs = document.getElementById('breadcrumbs');
 
@@ -399,18 +499,16 @@
             document.getElementById('no-classes-msg').classList.toggle('hidden', classesData.length > 0);
             classesData.forEach(cls => {
                 const card = document.createElement('div');
-                card.className = 'card p-4 flex flex-col justify-between cursor-pointer';
+                card.className = 'card p-4';
                 card.innerHTML = `
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">${cls.name}</h3>
+                    <div class="edit-icon" data-type="class" data-id="${cls.id}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </div>
+                    <div class="cursor-pointer" data-id="${cls.id}">
+                        <h3 class="text-lg font-bold text-gray-800 pr-8">${cls.name}</h3>
                         <p class="text-sm text-gray-500">${cls.students?.length || 0} students</p>
                     </div>
                 `;
-                card.onclick = () => {
-                    selectedClass = cls;
-                    showView('students');
-                    renderStudents();
-                };
                 lists.classes.appendChild(card);
             });
             animateList(lists.classes);
@@ -424,18 +522,16 @@
             document.getElementById('no-students-msg').classList.toggle('hidden', students.length > 0);
             students.forEach(student => {
                 const card = document.createElement('div');
-                card.className = 'card p-4 flex flex-col justify-between cursor-pointer';
+                card.className = 'card p-4';
                 card.innerHTML = `
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">${student.name}</h3>
+                     <div class="edit-icon" data-type="student" data-id="${student.id}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </div>
+                    <div class="cursor-pointer" data-id="${student.id}">
+                        <h3 class="text-lg font-bold text-gray-800 pr-8">${student.name}</h3>
                         <p class="text-sm text-gray-500">${student.subjects?.length || 0} subjects</p>
                     </div>
                 `;
-                card.onclick = () => {
-                    selectedStudent = student;
-                    showView('subjects');
-                    renderSubjects();
-                };
                 lists.students.appendChild(card);
             });
             animateList(lists.students);
@@ -450,18 +546,16 @@
 
             subjects.forEach(subject => {
                 const card = document.createElement('div');
-                card.className = 'card p-4 flex flex-col justify-between cursor-pointer';
+                card.className = 'card p-4';
                 card.innerHTML = `
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">${subject.name}</h3>
+                    <div class="edit-icon" data-type="subject" data-name="${subject.name}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </div>
+                    <div class="cursor-pointer" data-name="${subject.name}">
+                        <h3 class="text-lg font-bold text-gray-800 pr-8">${subject.name}</h3>
                         <p class="text-sm text-gray-500">${subject.chapters?.length || 0} chapters</p>
                     </div>
                 `;
-                card.onclick = () => {
-                    selectedSubjectName = subject.name;
-                    showView('chapters');
-                    renderChapters();
-                };
                 lists.subjects.appendChild(card);
             });
             animateList(lists.subjects);
@@ -495,6 +589,9 @@
                         <div class="flex items-center">
                             <input type="checkbox" data-chapter-id="${chapter.id}" class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3 cursor-pointer" ${chapter.completed ? 'checked' : ''}>
                             <span class="font-semibold text-lg ${chapter.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${chapter.name}</span>
+                             <div class="edit-icon ml-3" data-type="chapter" data-id="${chapter.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </div>
                         </div>
                         <div class="mt-2 pl-8 space-y-3">
                             ${websiteLinkHTML}
@@ -513,47 +610,74 @@
         
         // --- Data Manipulation Functions ---
         function addClass(name) {
-            appData.classes.push({
-                id: crypto.randomUUID(),
-                name: name,
-                students: []
-            });
+            appData.classes.push({ id: crypto.randomUUID(), name, students: [] });
             saveData();
             renderClasses();
+        }
+        
+        function updateClassName(newName) {
+            if (!itemForEdit) return;
+            const classToUpdate = appData.classes.find(c => c.id === itemForEdit.id);
+            if (classToUpdate) {
+                classToUpdate.name = newName;
+                saveData();
+                renderClasses();
+            }
         }
 
         function addStudent(name) {
             if (!selectedClass) return;
-            selectedClass.students.push({
-                id: crypto.randomUUID(),
-                name: name,
-                subjects: []
-            });
+            selectedClass.students.push({ id: crypto.randomUUID(), name, subjects: [] });
             saveData();
             renderStudents();
+        }
+        
+        function updateStudentName(newName) {
+            if (!itemForEdit || !selectedClass) return;
+            const studentToUpdate = selectedClass.students.find(s => s.id === itemForEdit.id);
+            if(studentToUpdate) {
+                studentToUpdate.name = newName;
+                saveData();
+                renderStudents();
+            }
         }
 
         function addSubject(name) {
             if (!selectedStudent) return;
-            selectedStudent.subjects.push({
-                name: name,
-                chapters: []
-            });
+            selectedStudent.subjects.push({ name, chapters: [] });
             saveData();
             renderSubjects();
+        }
+        
+        function updateSubjectName(newName) {
+            if (!itemForEdit || !selectedStudent) return;
+            const subjectToUpdate = selectedStudent.subjects.find(s => s.name === itemForEdit.name);
+            if(subjectToUpdate) {
+                subjectToUpdate.name = newName;
+                if(selectedSubjectName === itemForEdit.name) {
+                    selectedSubjectName = newName;
+                }
+                saveData();
+                renderSubjects();
+            }
         }
 
         function addChapter(name, link) {
             if (!selectedStudent || !selectedSubjectName) return;
             const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
             if (subject) {
-                subject.chapters.push({
-                    id: crypto.randomUUID(),
-                    name: name,
-                    link: link || "",
-                    completed: false,
-                    docLinks: []
-                });
+                subject.chapters.push({ id: crypto.randomUUID(), name, link: link || "", completed: false, docLinks: [] });
+                saveData();
+                renderChapters();
+            }
+        }
+        
+        function updateChapterName(newName) {
+            if (!itemForEdit || !selectedStudent || !selectedSubjectName) return;
+            const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
+            const chapterToUpdate = subject?.chapters.find(c => c.id === itemForEdit.id);
+            if(chapterToUpdate) {
+                chapterToUpdate.name = newName;
                 saveData();
                 renderChapters();
             }
@@ -593,6 +717,47 @@
             }
         }
 
+        // --- Import / Export Functions ---
+        function exportData() {
+            const jsonString = JSON.stringify(appData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'student-tracker-data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    // Basic validation
+                    if (importedData && Array.isArray(importedData.classes)) {
+                        appData = importedData;
+                        saveData();
+                        selectedClass = null;
+                        selectedStudent = null;
+                        selectedSubjectName = null;
+                        showView('classes');
+                        renderClasses();
+                    } else {
+                        console.error('Invalid data format');
+                    }
+                } catch (error) {
+                    console.error('Error parsing JSON file:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
         // --- Event Listeners Setup ---
         function setupEventListeners() {
             // Modal Triggers
@@ -600,6 +765,20 @@
             document.getElementById('show-add-student-modal-btn').onclick = () => showModal('add-student-modal');
             document.getElementById('show-add-subject-modal-btn').onclick = () => showModal('add-subject-modal');
             document.getElementById('show-add-chapter-modal-btn').onclick = () => showModal('add-chapter-modal');
+
+            // Back Buttons
+            document.getElementById('back-to-classes').onclick = () => { showView('classes'); renderClasses(); };
+            document.getElementById('back-to-students').onclick = () => { showView('students'); renderStudents(); };
+            document.getElementById('back-to-subjects').onclick = () => { showView('subjects'); renderSubjects(); };
+
+            // Import/Export Buttons
+            document.getElementById('export-btn').onclick = exportData;
+            document.getElementById('import-btn').onclick = () => showModal('confirm-import-modal');
+            document.getElementById('proceed-import-btn').onclick = () => {
+                hideModal('confirm-import-modal');
+                inputs.importFile.click();
+            };
+            inputs.importFile.onchange = importData;
 
             // Modal Cancel Buttons
             document.getElementById('modals-container').addEventListener('click', (e) => {
@@ -610,19 +789,70 @@
 
             // Form Submissions
             forms.addClass.onsubmit = (e) => { e.preventDefault(); addClass(inputs.className.value.trim()); forms.addClass.reset(); hideModal('add-class-modal'); };
+            forms.editClass.onsubmit = (e) => { e.preventDefault(); updateClassName(inputs.editClassName.value.trim()); forms.editClass.reset(); hideModal('edit-class-modal'); };
             forms.addStudent.onsubmit = (e) => { e.preventDefault(); addStudent(inputs.studentName.value.trim()); forms.addStudent.reset(); hideModal('add-student-modal'); };
+            forms.editStudent.onsubmit = (e) => { e.preventDefault(); updateStudentName(inputs.editStudentName.value.trim()); forms.editStudent.reset(); hideModal('edit-student-modal'); };
             forms.addSubject.onsubmit = (e) => { e.preventDefault(); addSubject(inputs.subjectName.value.trim()); forms.addSubject.reset(); hideModal('add-subject-modal'); };
+            forms.editSubject.onsubmit = (e) => { e.preventDefault(); updateSubjectName(inputs.editSubjectName.value.trim()); forms.editSubject.reset(); hideModal('edit-subject-modal'); };
             forms.addChapter.onsubmit = (e) => { e.preventDefault(); addChapter(inputs.chapterName.value.trim(), inputs.chapterLink.value.trim()); forms.addChapter.reset(); hideModal('add-chapter-modal'); };
+            forms.editChapter.onsubmit = (e) => { e.preventDefault(); updateChapterName(inputs.editChapterName.value.trim()); forms.editChapter.reset(); hideModal('edit-chapter-modal'); };
             forms.addDocLink.onsubmit = (e) => { e.preventDefault(); if(chapterForDocLink){ addDocLink(chapterForDocLink, inputs.docLink.value.trim()); forms.addDocLink.reset(); hideModal('add-doc-link-modal'); chapterForDocLink = null; } };
             forms.editChapterLink.onsubmit = (e) => { e.preventDefault(); if(chapterForEditLink) { updateChapterLink(chapterForEditLink, inputs.editChapterLink.value.trim()); forms.editChapterLink.reset(); hideModal('edit-chapter-link-modal'); chapterForEditLink = null; } };
 
-            // Dynamic content listeners
-            lists.subjects.addEventListener('click', (e) => {
-                const subjectCard = e.target.closest('.card');
-                if (subjectCard) {
-                    selectedSubjectName = subjectCard.querySelector('h3').textContent;
-                    showView('chapters');
-                    renderChapters();
+            // Click Handlers for lists (delegation)
+            document.getElementById('app').addEventListener('click', (e) => {
+                const editIcon = e.target.closest('.edit-icon');
+                const cardBody = e.target.closest('.cursor-pointer');
+
+                if (editIcon) {
+                    const type = editIcon.dataset.type;
+                    const id = editIcon.dataset.id;
+                    const name = editIcon.dataset.name;
+
+                    if (type === 'class') {
+                        itemForEdit = appData.classes.find(c => c.id === id);
+                        if (itemForEdit) {
+                            inputs.editClassName.value = itemForEdit.name;
+                            showModal('edit-class-modal');
+                        }
+                    } else if (type === 'student') {
+                        itemForEdit = selectedClass.students.find(s => s.id === id);
+                        if(itemForEdit) {
+                            inputs.editStudentName.value = itemForEdit.name;
+                            showModal('edit-student-modal');
+                        }
+                    } else if (type === 'subject') {
+                        itemForEdit = selectedStudent.subjects.find(s => s.name === name);
+                        if(itemForEdit) {
+                            inputs.editSubjectName.value = itemForEdit.name;
+                            showModal('edit-subject-modal');
+                        }
+                    } else if (type === 'chapter') {
+                         const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
+                         itemForEdit = subject?.chapters.find(c => c.id === id);
+                         if(itemForEdit) {
+                            inputs.editChapterName.value = itemForEdit.name;
+                            showModal('edit-chapter-modal');
+                         }
+                    }
+                } else if (cardBody) {
+                     const id = cardBody.dataset.id;
+                     const name = cardBody.dataset.name;
+                     const parentList = cardBody.closest('.grid, .space-y-4');
+
+                     if(parentList.id === 'classes-list'){
+                        selectedClass = appData.classes.find(c => c.id === id);
+                        showView('students');
+                        renderStudents();
+                     } else if(parentList.id === 'students-list') {
+                        selectedStudent = selectedClass.students.find(s => s.id === id);
+                        showView('subjects');
+                        renderSubjects();
+                     } else if (parentList.id === 'subjects-list') {
+                        selectedSubjectName = name;
+                        showView('chapters');
+                        renderChapters();
+                     }
                 }
             });
 
