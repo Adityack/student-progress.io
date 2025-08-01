@@ -32,9 +32,6 @@
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
 
         /* --- Animation Classes --- */
         .modal.show .modal-backdrop {
@@ -88,14 +85,6 @@
             background: -webkit-linear-gradient(45deg, #4f46e5, #a855f7);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-        }
-        .spinner {
-            border: 2px solid rgba(0,0,0,.1);
-            border-left-color: #fff;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 0.8s linear infinite;
         }
     </style>
 </head>
@@ -459,19 +448,18 @@
 
             subjects.forEach(subject => {
                 const card = document.createElement('div');
-                card.className = 'card p-4 flex flex-col justify-between';
+                card.className = 'card p-4 flex flex-col justify-between cursor-pointer';
                 card.innerHTML = `
-                    <div class="cursor-pointer" data-subject-name="${subject.name}">
+                    <div>
                         <h3 class="text-lg font-bold text-gray-800">${subject.name}</h3>
                         <p class="text-sm text-gray-500">${subject.chapters?.length || 0} chapters</p>
                     </div>
-                    <div class="mt-4">
-                        <button data-subject-name="${subject.name}" class="generate-chapters-btn btn btn-primary text-white font-semibold py-2 px-4 rounded-lg text-sm w-full flex items-center justify-center">
-                            <span class="btn-text">✨ Generate Chapters</span>
-                            <span class="spinner hidden"></span>
-                        </button>
-                    </div>
                 `;
+                card.onclick = () => {
+                    selectedSubjectName = subject.name;
+                    showView('chapters');
+                    renderChapters();
+                };
                 lists.subjects.appendChild(card);
             });
             animateList(lists.subjects);
@@ -622,54 +610,6 @@
             await updateClassData(selectedClass);
         }
 
-        // --- Gemini API Function ---
-        async function generateChaptersWithAI(subjectName, buttonElement) {
-            if (!selectedClass || !selectedStudent) return;
-            const btnText = buttonElement.querySelector('.btn-text');
-            const spinner = buttonElement.querySelector('.spinner');
-            btnText.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            buttonElement.disabled = true;
-
-            const prompt = `Generate a list of essential chapter titles for a course on "${subjectName}". Return the response as a JSON object with a single key "chapters" which is an array of strings. For example: {"chapters": ["Chapter 1: ...", "Chapter 2: ..."]}`;
-            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } };
-            const apiKey = ""; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-            try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-                const result = await response.json();
-                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (text) {
-                    const parsedJson = JSON.parse(text);
-                    const chapters = parsedJson.chapters;
-
-                    if (chapters && Array.isArray(chapters)) {
-                        const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
-                        if (studentIndex === -1) return;
-                        const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === subjectName);
-                        if (subjectIndex === -1) return;
-
-                        const newChapters = chapters.map(name => ({ id: crypto.randomUUID(), name, link: "", completed: false, docLinks: [] }));
-                        selectedClass.students[studentIndex].subjects[subjectIndex].chapters.push(...newChapters);
-                        await updateClassData(selectedClass);
-                    }
-                } else {
-                     throw new Error("No content received from API.");
-                }
-            } catch (error) {
-                console.error("Error generating chapters with AI:", error);
-                btnText.textContent = "Error! Try again.";
-                setTimeout(() => { btnText.textContent = "✨ Generate Chapters"; }, 3000);
-            } finally {
-                spinner.classList.add('hidden');
-                btnText.classList.remove('hidden');
-                buttonElement.disabled = false;
-            }
-        }
-
         // --- Event Listeners Setup ---
         function setupEventListeners() {
             // Modal Triggers
@@ -694,15 +634,13 @@
             forms.editChapterLink.onsubmit = async (e) => { e.preventDefault(); if(chapterForEditLink) { await updateChapterLink(chapterForEditLink, inputs.editChapterLink.value.trim()); forms.editChapterLink.reset(); hideModal('edit-chapter-link-modal'); chapterForEditLink = null; } };
 
             // Dynamic content listeners
-            lists.subjects.addEventListener('click', async (e) => {
-                const subjectCard = e.target.closest('[data-subject-name]');
-                if (subjectCard && !e.target.closest('button')) {
-                    selectedSubjectName = subjectCard.dataset.subjectName;
+            lists.subjects.addEventListener('click', (e) => {
+                const subjectCard = e.target.closest('.card');
+                if (subjectCard) {
+                    selectedSubjectName = subjectCard.querySelector('h3').textContent;
                     showView('chapters');
                     renderChapters();
                 }
-                const generateBtn = e.target.closest('.generate-chapters-btn');
-                if (generateBtn) await generateChaptersWithAI(generateBtn.dataset.subjectName, generateBtn);
             });
 
             lists.chapters.addEventListener('click', async (e) => {
