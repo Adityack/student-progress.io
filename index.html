@@ -245,30 +245,16 @@
         </div>
     </div>
 
-    <script type="module">
-        // Firebase Imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Firebase Configuration ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'student-tracker-default';
-
-        // --- Firebase Initialization ---
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+    <script>
         // --- App State ---
-        let currentUserId = null;
+        let appData = {
+            classes: []
+        };
         let selectedClass = null;
         let selectedStudent = null;
         let selectedSubjectName = null;
-        let classesUnsubscribe = null;
         let chapterForDocLink = null;
         let chapterForEditLink = null;
-
 
         // --- UI Element References ---
         const views = {
@@ -302,6 +288,20 @@
         };
         const breadcrumbs = document.getElementById('breadcrumbs');
 
+        // --- Local Storage Functions ---
+        const STORAGE_KEY = 'studentTrackerData';
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        }
+
+        function loadData() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (data) {
+                appData = JSON.parse(data);
+            }
+        }
+        
         // --- Utility Functions ---
         function showView(viewName) {
             Object.values(views).forEach(view => view.classList.add('hidden'));
@@ -340,6 +340,7 @@
                 selectedStudent = null;
                 selectedSubjectName = null;
                 showView('classes');
+                renderClasses();
             };
             breadcrumbs.appendChild(homeLink);
 
@@ -392,7 +393,8 @@
         }
 
         // --- Rendering Functions ---
-        function renderClasses(classesData) {
+        function renderClasses() {
+            const classesData = appData.classes;
             lists.classes.innerHTML = '';
             document.getElementById('no-classes-msg').classList.toggle('hidden', classesData.length > 0);
             classesData.forEach(cls => {
@@ -509,105 +511,86 @@
             animateList(lists.chapters);
         }
         
-        // --- Firestore Actions ---
-        
-        async function getClassDocRef() {
-             if (!currentUserId || !selectedClass?.id) return null;
-             return doc(db, "artifacts", appId, "users", currentUserId, "classes", selectedClass.id);
+        // --- Data Manipulation Functions ---
+        function addClass(name) {
+            appData.classes.push({
+                id: crypto.randomUUID(),
+                name: name,
+                students: []
+            });
+            saveData();
+            renderClasses();
         }
 
-        async function addClass(name) {
-            if (!currentUserId) return;
-            const classId = crypto.randomUUID();
-            const classRef = doc(db, "artifacts", appId, "users", currentUserId, "classes", classId);
-            await setDoc(classRef, { id: classId, name: name, students: [] });
-        }
-
-        async function addStudent(name) {
-            const classDocRef = await getClassDocRef();
-            if(!classDocRef) return;
-            const newStudent = {
+        function addStudent(name) {
+            if (!selectedClass) return;
+            selectedClass.students.push({
                 id: crypto.randomUUID(),
                 name: name,
                 subjects: []
-            };
-            await updateDoc(classDocRef, {
-                students: arrayUnion(newStudent)
             });
+            saveData();
+            renderStudents();
         }
 
-        async function updateClassData(updatedClass) {
-            const classDocRef = doc(db, "artifacts", appId, "users", currentUserId, "classes", updatedClass.id);
-            await setDoc(classDocRef, updatedClass);
-        }
-
-        async function addSubject(name) {
-            if (!selectedClass || !selectedStudent) return;
-            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
-            if (studentIndex === -1) return;
-
-            selectedClass.students[studentIndex].subjects.push({ name: name, chapters: [] });
-            await updateClassData(selectedClass);
-        }
-
-        async function addChapter(name, link) {
-            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
-            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
-            if (studentIndex === -1) return;
-            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
-            if (subjectIndex === -1) return;
-
-            const newChapter = {
-                id: crypto.randomUUID(),
+        function addSubject(name) {
+            if (!selectedStudent) return;
+            selectedStudent.subjects.push({
                 name: name,
-                link: link || "",
-                completed: false,
-                docLinks: []
-            };
-            selectedClass.students[studentIndex].subjects[subjectIndex].chapters.push(newChapter);
-            await updateClassData(selectedClass);
+                chapters: []
+            });
+            saveData();
+            renderSubjects();
+        }
+
+        function addChapter(name, link) {
+            if (!selectedStudent || !selectedSubjectName) return;
+            const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
+            if (subject) {
+                subject.chapters.push({
+                    id: crypto.randomUUID(),
+                    name: name,
+                    link: link || "",
+                    completed: false,
+                    docLinks: []
+                });
+                saveData();
+                renderChapters();
+            }
         }
         
-        async function toggleChapterCompletion(chapterId) {
-            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
-            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
-            if (studentIndex === -1) return;
-            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
-            if (subjectIndex === -1) return;
-            const chapterIndex = selectedClass.students[studentIndex].subjects[subjectIndex].chapters.findIndex(c => c.id === chapterId);
-            if (chapterIndex === -1) return;
-
-            const chapter = selectedClass.students[studentIndex].subjects[subjectIndex].chapters[chapterIndex];
-            chapter.completed = !chapter.completed;
-            await updateClassData(selectedClass);
+        function toggleChapterCompletion(chapterId) {
+            if (!selectedStudent || !selectedSubjectName) return;
+            const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
+            const chapter = subject?.chapters.find(c => c.id === chapterId);
+            if (chapter) {
+                chapter.completed = !chapter.completed;
+                saveData();
+                renderChapters();
+            }
         }
         
-        async function addDocLink(chapterId, docLink) {
-            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
-            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
-            if (studentIndex === -1) return;
-            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
-            if (subjectIndex === -1) return;
-            const chapterIndex = selectedClass.students[studentIndex].subjects[subjectIndex].chapters.findIndex(c => c.id === chapterId);
-            if (chapterIndex === -1) return;
-
-            const chapter = selectedClass.students[studentIndex].subjects[subjectIndex].chapters[chapterIndex];
-            if (!chapter.docLinks) chapter.docLinks = [];
-            chapter.docLinks.push(docLink);
-            await updateClassData(selectedClass);
+        function addDocLink(chapterId, docLink) {
+            if (!selectedStudent || !selectedSubjectName) return;
+            const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
+            const chapter = subject?.chapters.find(c => c.id === chapterId);
+            if (chapter) {
+                if (!chapter.docLinks) chapter.docLinks = [];
+                chapter.docLinks.push(docLink);
+                saveData();
+                renderChapters();
+            }
         }
 
-        async function updateChapterLink(chapterId, newLink) {
-            if (!selectedClass || !selectedStudent || !selectedSubjectName) return;
-            const studentIndex = selectedClass.students.findIndex(s => s.id === selectedStudent.id);
-            if (studentIndex === -1) return;
-            const subjectIndex = selectedClass.students[studentIndex].subjects.findIndex(s => s.name === selectedSubjectName);
-            if (subjectIndex === -1) return;
-            const chapterIndex = selectedClass.students[studentIndex].subjects[subjectIndex].chapters.findIndex(c => c.id === chapterId);
-            if (chapterIndex === -1) return;
-
-            selectedClass.students[studentIndex].subjects[subjectIndex].chapters[chapterIndex].link = newLink;
-            await updateClassData(selectedClass);
+        function updateChapterLink(chapterId, newLink) {
+            if (!selectedStudent || !selectedSubjectName) return;
+            const subject = selectedStudent.subjects.find(s => s.name === selectedSubjectName);
+            const chapter = subject?.chapters.find(c => c.id === chapterId);
+            if (chapter) {
+                chapter.link = newLink;
+                saveData();
+                renderChapters();
+            }
         }
 
         // --- Event Listeners Setup ---
@@ -626,12 +609,12 @@
             });
 
             // Form Submissions
-            forms.addClass.onsubmit = async (e) => { e.preventDefault(); await addClass(inputs.className.value.trim()); forms.addClass.reset(); hideModal('add-class-modal'); };
-            forms.addStudent.onsubmit = async (e) => { e.preventDefault(); await addStudent(inputs.studentName.value.trim()); forms.addStudent.reset(); hideModal('add-student-modal'); };
-            forms.addSubject.onsubmit = async (e) => { e.preventDefault(); await addSubject(inputs.subjectName.value.trim()); forms.addSubject.reset(); hideModal('add-subject-modal'); };
-            forms.addChapter.onsubmit = async (e) => { e.preventDefault(); await addChapter(inputs.chapterName.value.trim(), inputs.chapterLink.value.trim()); forms.addChapter.reset(); hideModal('add-chapter-modal'); };
-            forms.addDocLink.onsubmit = async (e) => { e.preventDefault(); if(chapterForDocLink){ await addDocLink(chapterForDocLink, inputs.docLink.value.trim()); forms.addDocLink.reset(); hideModal('add-doc-link-modal'); chapterForDocLink = null; } };
-            forms.editChapterLink.onsubmit = async (e) => { e.preventDefault(); if(chapterForEditLink) { await updateChapterLink(chapterForEditLink, inputs.editChapterLink.value.trim()); forms.editChapterLink.reset(); hideModal('edit-chapter-link-modal'); chapterForEditLink = null; } };
+            forms.addClass.onsubmit = (e) => { e.preventDefault(); addClass(inputs.className.value.trim()); forms.addClass.reset(); hideModal('add-class-modal'); };
+            forms.addStudent.onsubmit = (e) => { e.preventDefault(); addStudent(inputs.studentName.value.trim()); forms.addStudent.reset(); hideModal('add-student-modal'); };
+            forms.addSubject.onsubmit = (e) => { e.preventDefault(); addSubject(inputs.subjectName.value.trim()); forms.addSubject.reset(); hideModal('add-subject-modal'); };
+            forms.addChapter.onsubmit = (e) => { e.preventDefault(); addChapter(inputs.chapterName.value.trim(), inputs.chapterLink.value.trim()); forms.addChapter.reset(); hideModal('add-chapter-modal'); };
+            forms.addDocLink.onsubmit = (e) => { e.preventDefault(); if(chapterForDocLink){ addDocLink(chapterForDocLink, inputs.docLink.value.trim()); forms.addDocLink.reset(); hideModal('add-doc-link-modal'); chapterForDocLink = null; } };
+            forms.editChapterLink.onsubmit = (e) => { e.preventDefault(); if(chapterForEditLink) { updateChapterLink(chapterForEditLink, inputs.editChapterLink.value.trim()); forms.editChapterLink.reset(); hideModal('edit-chapter-link-modal'); chapterForEditLink = null; } };
 
             // Dynamic content listeners
             lists.subjects.addEventListener('click', (e) => {
@@ -643,8 +626,8 @@
                 }
             });
 
-            lists.chapters.addEventListener('click', async (e) => {
-                if (e.target.matches('input[type="checkbox"]')) { await toggleChapterCompletion(e.target.dataset.chapterId); }
+            lists.chapters.addEventListener('click', (e) => {
+                if (e.target.matches('input[type="checkbox"]')) { toggleChapterCompletion(e.target.dataset.chapterId); }
                 if (e.target.matches('.add-doc-link-btn')) { chapterForDocLink = e.target.dataset.chapterId; showModal('add-doc-link-modal'); }
                 if (e.target.matches('.edit-link-btn')) {
                     chapterForEditLink = e.target.dataset.chapterId;
@@ -656,53 +639,12 @@
             });
         }
         
-        // --- Authentication & Data Loading ---
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                currentUserId = user.uid;
-                if (classesUnsubscribe) classesUnsubscribe();
-                const classesCollRef = collection(db, "artifacts", appId, "users", currentUserId, "classes");
-                classesUnsubscribe = onSnapshot(classesCollRef, (snapshot) => {
-                    const classesData = snapshot.docs.map(doc => doc.data());
-                    if(selectedClass) {
-                        const updatedClass = classesData.find(c => c.id === selectedClass.id);
-                        if(updatedClass) {
-                            selectedClass = updatedClass;
-                            if(selectedStudent){
-                                selectedStudent = updatedClass.students.find(s => s.id === selectedStudent.id) || null;
-                            }
-                        } else {
-                            selectedClass = null;
-                            selectedStudent = null;
-                            selectedSubjectName = null;
-                            showView('classes');
-                        }
-                    }
-                    renderClasses(classesData);
-                    if (views.students.classList.contains('hidden') === false) renderStudents();
-                    if (views.subjects.classList.contains('hidden') === false) renderSubjects();
-                    if (views.chapters.classList.contains('hidden') === false) renderChapters();
-                }, error => console.error("Firestore snapshot error:", error));
-            } else {
-                currentUserId = null;
-                if (classesUnsubscribe) classesUnsubscribe();
-                lists.classes.innerHTML = '<p class="text-center text-gray-500">Please sign in to manage your classes.</p>';
-            }
-        });
-
-        async function main() {
+        // --- App Initialization ---
+        function main() {
+            loadData();
             setupEventListeners();
             showView('classes');
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Authentication failed:", error);
-                document.body.innerHTML = `<div class="p-8 text-center text-red-500">Could not authenticate. The application cannot start.</div>`;
-            }
+            renderClasses();
         }
 
         main();
